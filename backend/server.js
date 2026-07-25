@@ -259,3 +259,12 @@ app.listen(PORT, () => {
   console.log(`Guatelipe CRM backend rodando na porta ${PORT}`);
   if (missing.length) console.warn('⚠️  Variáveis de ambiente faltando:', missing.join(', '));
 });
+
+// Mantém o serviço acordado no plano gratuito do Render (evita o "spin down"
+// que atrasa/derruba a entrega dos webhooks). O Render fornece RENDER_EXTERNAL_URL.
+const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+if (SELF_URL) {
+  setInterval(() => {
+    fetch(`${SELF_URL}/health`).catch(() => {});
+  }, 10 * 60 * 1000); // a cada 10 minutos
+}

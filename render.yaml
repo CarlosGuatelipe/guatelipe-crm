@@ -25,3 +25,10 @@ services:
         value: "*"           # troque pela URL do seu CRM em produção
       - key: GRAPH_VERSION
         value: v21.0
+
+  # Site do CRM (front-end estático) — servido em HTTPS, acessível de qualquer dispositivo.
+  - type: web
+    name: guatelipe-crm-web
+    runtime: static
+    buildCommand: echo "site estatico, sem build"
+    staticPublishPath: .

@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   saveToken, getToken, addLead, getLeads, markSeen, pullNewLeads,
+  getConfig, setConfig, markReplied,
 } from './store.js';
 
 // Carrega o arquivo .env local (sem dependências). Em hospedagem (Render,
@@ -277,12 +278,37 @@ app.post('/webhooks/instagram', (req, res) => {
           receivedAt: new Date().toISOString(),
           pulled: false,
         });
+
+        // Resposta automática — envia UMA vez por remetente, se ativada no CRM.
+        const cfg = getConfig();
+        if (cfg.autoReplyEnabled && cfg.autoReplyMessage && markReplied(senderId)) {
+          sendInstagramMessage(senderId, cfg.autoReplyMessage);
+        }
       }
     }
   } catch (e) {
     console.error('Erro ao processar webhook:', e);
   }
 });
+
+// Envia uma mensagem de Direct usando o token salvo (API de mensagens do Instagram).
+async function sendInstagramMessage(recipientId, text) {
+  const token = getToken();
+  if (!token?.access_token) { console.log('[auto-reply] sem token, não enviou'); return; }
+  try {
+    const r = await fetch(
+      `https://graph.instagram.com/${GRAPH_VERSION}/me/messages?access_token=${token.access_token}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: { id: recipientId }, message: { text } }),
+      },
+    ).then((res) => res.json());
+    console.log('[auto-reply] enviado para', recipientId, '->', JSON.stringify(r).slice(0, 200));
+  } catch (e) {
+    console.log('[auto-reply] falhou:', e.message);
+  }
+}
 
 function verifySignature(req) {
   const signature = req.header('x-hub-signature-256');
@@ -311,6 +337,22 @@ app.get('/api/leads', (req, res) => {
   // ?all=1 devolve todos; padrão devolve só os ainda não importados.
   const leads = req.query.all ? getLeads() : pullNewLeads();
   res.json({ leads });
+});
+
+// Configuração da resposta automática (o CRM lê e grava por aqui).
+app.get('/api/config', (req, res) => {
+  if (req.header('x-api-key') !== CRM_API_KEY) return res.status(401).json({ error: 'unauthorized' });
+  res.json(getConfig());
+});
+
+app.post('/api/config', (req, res) => {
+  if (req.header('x-api-key') !== CRM_API_KEY) return res.status(401).json({ error: 'unauthorized' });
+  const { autoReplyEnabled, autoReplyMessage } = req.body || {};
+  const saved = setConfig({
+    autoReplyEnabled: Boolean(autoReplyEnabled),
+    autoReplyMessage: String(autoReplyMessage || '').slice(0, 900),
+  });
+  res.json(saved);
 });
 
 app.listen(PORT, () => {

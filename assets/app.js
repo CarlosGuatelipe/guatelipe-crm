@@ -198,7 +198,7 @@ async function igSync(){
 $('#igSaveBtn')?.addEventListener('click',()=>{
   const url=($('#igBackendUrl').value||'').trim(); const key=($('#igApiKey').value||'').trim();
   if(!url||!key){ toast('Preencha URL e chave.'); return; }
-  igSaveCfg({url,key}); toast('Configuração salva.'); igRefreshStatus();
+  igSaveCfg({url,key}); toast('Configuração salva.'); igRefreshStatus(); igLoadAutoReply();
 });
 $('#igConnectBtn')?.addEventListener('click',()=>{
   const c=igCfg(); if(!c.url){ toast('Salve a URL do backend primeiro.'); return; }
@@ -207,7 +207,32 @@ $('#igConnectBtn')?.addEventListener('click',()=>{
 });
 $('#igSyncBtn')?.addEventListener('click',igSync);
 
+// --- Resposta automática ---
+async function igLoadAutoReply(){
+  const c=igCfg(); if(!c.url||!c.key) return;
+  try{
+    const r=await fetch(c.url.replace(/\/$/,'')+'/api/config',{headers:{'x-api-key':c.key}});
+    if(!r.ok) return;
+    const cfg=await r.json();
+    if($('#autoReplyEnabled')) $('#autoReplyEnabled').checked=!!cfg.autoReplyEnabled;
+    if($('#autoReplyMessage')) $('#autoReplyMessage').value=cfg.autoReplyMessage||'';
+  }catch{}
+}
+$('#autoReplySaveBtn')?.addEventListener('click',async()=>{
+  const c=igCfg(); if(!c.url||!c.key){ toast('Configure a URL e a chave primeiro.'); return; }
+  const enabled=$('#autoReplyEnabled').checked;
+  const message=($('#autoReplyMessage').value||'').trim();
+  if(enabled && !message){ toast('Escreva a mensagem da resposta automática.'); return; }
+  try{
+    const r=await fetch(c.url.replace(/\/$/,'')+'/api/config',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':c.key},body:JSON.stringify({autoReplyEnabled:enabled,autoReplyMessage:message})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    toast('Resposta automática salva.');
+    if($('#autoReplyStatus')) $('#autoReplyStatus').textContent=enabled?'Ativada ✓':'Desativada.';
+  }catch(err){ toast('Falha ao salvar.'); if($('#autoReplyStatus')) $('#autoReplyStatus').textContent='Erro: '+err.message; }
+});
+
 igLoadCfgToForm();
 igRefreshStatus();
+igLoadAutoReply();
 
 renderAll();

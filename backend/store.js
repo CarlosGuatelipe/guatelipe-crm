@@ -9,7 +9,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, 'data');
 const DATA_FILE = join(DATA_DIR, 'store.json');
 
-const empty = { token: null, leads: [], seenMessageIds: [] };
+const empty = {
+  token: null,
+  leads: [],
+  seenMessageIds: [],
+  repliedSenders: [],
+  config: { autoReplyEnabled: false, autoReplyMessage: '' },
+};
 
 function ensure() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
@@ -39,6 +45,29 @@ export function saveToken(token) {
 
 export function getToken() {
   return read().token;
+}
+
+// Configuração da resposta automática (definida pelo CRM).
+export function getConfig() {
+  return read().config || { autoReplyEnabled: false, autoReplyMessage: '' };
+}
+
+export function setConfig(partial) {
+  const db = read();
+  db.config = { ...db.config, ...partial };
+  write(db);
+  return db.config;
+}
+
+// Garante que só respondemos automaticamente UMA vez por remetente.
+export function markReplied(senderId) {
+  if (!senderId) return false;
+  const db = read();
+  if (db.repliedSenders.includes(senderId)) return false;
+  db.repliedSenders.push(senderId);
+  if (db.repliedSenders.length > 5000) db.repliedSenders = db.repliedSenders.slice(-5000);
+  write(db);
+  return true;
 }
 
 // Evita criar lead duplicado para a mesma mensagem (o webhook pode reenviar).

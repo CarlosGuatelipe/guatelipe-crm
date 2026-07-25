@@ -229,12 +229,16 @@ app.post('/webhooks/instagram', (req, res) => {
 function verifySignature(req) {
   const signature = req.header('x-hub-signature-256');
   if (!signature || !req.rawBody) return false;
-  const expected = 'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(req.rawBody).digest('hex');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
-    return false;
+  // O webhook pode ser assinado com o Instagram app secret (APP_SECRET) ou com
+  // o Facebook App Secret (WEBHOOK_APP_SECRET). Aceitamos qualquer um dos dois.
+  const secrets = [APP_SECRET, process.env.WEBHOOK_APP_SECRET].filter(Boolean);
+  for (const secret of secrets) {
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(req.rawBody).digest('hex');
+    try {
+      if (crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return true;
+    } catch { /* comprimento diferente — tenta o próximo */ }
   }
+  return false;
 }
 
 function cryptoRandomId() {

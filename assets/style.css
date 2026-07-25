@@ -9,3 +9,5 @@
 .integration-copy .field{margin-top:12px}.integration-copy .field input{width:100%}.integration-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.integration-status{margin-top:12px !important;font-size:11px !important;color:#9aa0ad !important;line-height:1.5}
 
 .autoreply-box{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}.autoreply-toggle{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;cursor:pointer}.autoreply-toggle input{width:16px;height:16px;accent-color:var(--blue)}.autoreply-hint{margin:8px 0 10px !important;font-size:11px !important;color:var(--muted) !important}.autoreply-box textarea{width:100%;min-height:70px;resize:vertical;margin-bottom:10px}
+
+.brand-mark{font-size:16px;letter-spacing:-.02em}

@@ -150,11 +150,12 @@ app.get('/auth/instagram/callback', async (req, res) => {
 
     // 2d) inscreve o app para receber webhooks de mensagens desta conta
     try {
-      await fetch(
+      const sub = await fetch(
         `https://graph.instagram.com/${GRAPH_VERSION}/me/subscribed_apps?subscribed_fields=messages&access_token=${accessToken}`,
         { method: 'POST' },
-      );
-    } catch { /* não impede a conexão */ }
+      ).then((r) => r.json());
+      console.log('[connect] subscribed_apps ->', JSON.stringify(sub));
+    } catch (e) { console.log('[connect] subscribed_apps falhou:', e.message); }
 
     res.send(`<html lang="pt-BR"><body style="font-family:system-ui;background:#050505;color:#fff;text-align:center;padding:60px">
       <h1>✅ Instagram conectado</h1>
@@ -180,21 +181,27 @@ app.get('/webhooks/instagram', (req, res) => {
 
 // 3b) Recebimento (POST) — mensagens do Direct chegam aqui.
 app.post('/webhooks/instagram', (req, res) => {
+  const sigOk = verifySignature(req);
+  console.log('[webhook] recebido | assinatura:', sigOk ? 'OK' : 'INVALIDA',
+    '| body:', JSON.stringify(req.body).slice(0, 600));
   // Valida a assinatura para garantir que veio mesmo da Meta.
-  if (!verifySignature(req)) return res.sendStatus(401);
+  if (!sigOk) return res.sendStatus(401);
   res.sendStatus(200); // responde rápido; processa depois
 
   try {
     const body = req.body;
-    if (body.object !== 'instagram') return;
+    if (body.object !== 'instagram') { console.log('[webhook] object diferente de instagram:', body.object); return; }
     for (const entry of body.entry || []) {
-      for (const event of entry.messaging || []) {
+      // Alguns eventos chegam em "entry.messaging", outros em "entry.changes".
+      const events = entry.messaging || entry.changes?.map((c) => c.value) || [];
+      for (const event of events) {
         const messageId = event.message?.mid;
         const isEcho = event.message?.is_echo; // mensagem enviada por você mesmo
         const text = event.message?.text;
         const senderId = event.sender?.id;
-        if (isEcho || !text || !senderId) continue;
-        if (!markSeen(messageId)) continue; // já processado
+        if (isEcho || !text || !senderId) { console.log('[webhook] evento ignorado (echo/sem texto):', JSON.stringify(event).slice(0, 300)); continue; }
+        if (!markSeen(messageId)) { console.log('[webhook] mensagem repetida, ignorada:', messageId); continue; }
+        console.log('[webhook] LEAD criado do Direct de', senderId, '->', text);
 
         addLead({
           id: cryptoRandomId(),

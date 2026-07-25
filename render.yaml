@@ -1,0 +1,27 @@
+# Blueprint do Render — publica o backend do Guatelipe CRM em HTTPS.
+# No Render: New > Blueprint > conecte este repositório. Depois preencha as
+# variáveis marcadas (APP_ID, APP_SECRET, etc.) em Environment.
+services:
+  - type: web
+    name: guatelipe-crm-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ID
+        sync: false          # preencha no painel do Render
+      - key: APP_SECRET
+        sync: false          # preencha no painel do Render (secreto)
+      - key: REDIRECT_URI
+        sync: false          # ex.: https://guatelipe-crm-backend.onrender.com/auth/instagram/callback
+      - key: WEBHOOK_VERIFY_TOKEN
+        generateValue: true  # o Render gera um valor seguro
+      - key: CRM_API_KEY
+        generateValue: true  # o Render gera um valor seguro
+      - key: ALLOWED_ORIGIN
+        value: "*"           # troque pela URL do seu CRM em produção
+      - key: GRAPH_VERSION
+        value: v21.0

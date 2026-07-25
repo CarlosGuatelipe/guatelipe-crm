@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#050505" />
+  <title>Guatelipe CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">G</div>
+        <div>
+          <strong>Guatelipe</strong>
+          <span>Web Development</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Navegação principal">
+        <button class="nav-item active" data-view="dashboard"><span>◫</span> Dashboard</button>
+        <button class="nav-item" data-view="leads"><span>◎</span> Leads</button>
+        <button class="nav-item" data-view="pipeline"><span>⌘</span> Funil</button>
+        <button class="nav-item" data-view="projects"><span>◇</span> Projetos</button>
+        <button class="nav-item" data-view="finance"><span>↗</span> Financeiro</button>
+        <button class="nav-item" data-view="settings"><span>⚙</span> Integrações</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-dot"></div>
+        <div>
+          <strong>CRM local ativo</strong>
+          <span>Dados salvos no navegador</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="menu-btn" id="menuBtn" aria-label="Abrir menu">☰</button>
+        <div>
+          <p class="eyebrow">PAINEL COMERCIAL</p>
+          <h1 id="pageTitle">Visão geral</h1>
+        </div>
+        <div class="top-actions">
+          <input type="file" id="importInput" accept="application/json" hidden>
+          <button class="btn ghost" id="importBtn">Importar backup</button>
+          <button class="btn ghost" id="exportBtn">Exportar dados</button>
+          <button class="btn primary" id="newLeadBtn">+ Novo lead</button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboardView">
+        <div class="notice" id="saveNotice"><strong>CRM funcional:</strong> cadastre, edite e exclua informações. Os dados ficam salvos automaticamente neste navegador.</div>
+        <div class="stats-grid">
+          <article class="stat-card"><span>Novos leads</span><strong id="statNewLeads">0</strong><small>aguardando contato</small></article>
+          <article class="stat-card"><span>Em negociação</span><strong id="statNegotiation">0</strong><small>oportunidades abertas</small></article>
+          <article class="stat-card"><span>Projetos ativos</span><strong id="statProjects">0</strong><small>em produção</small></article>
+          <article class="stat-card accent"><span>Receita prevista</span><strong id="statRevenue">R$ 0</strong><small>negócios em aberto</small></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel large">
+            <div class="panel-head">
+              <div><span class="panel-kicker">PIPELINE</span><h2>Oportunidades recentes</h2></div>
+              <button class="text-btn" data-view-jump="pipeline">Ver funil →</button>
+            </div>
+            <div id="recentLeads" class="recent-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span class="panel-kicker">ORIGEM</span><h2>Captação</h2></div></div>
+            <div id="sourceBars" class="source-bars"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><div><span class="panel-kicker">PRÓXIMAS AÇÕES</span><h2>Follow-ups</h2></div></div>
+            <div id="followups" class="timeline"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="leadsView">
+        <div class="toolbar">
+          <input class="search" id="leadSearch" placeholder="Buscar por nome, empresa ou Instagram..." />
+          <select id="leadStatusFilter"><option value="all">Todos os status</option></select>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Lead</th><th>Origem</th><th>Serviço</th><th>Status</th><th>Valor</th><th>Próxima ação</th><th></th></tr></thead>
+              <tbody id="leadsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="pipelineView">
+        <div class="kanban" id="kanbanBoard"></div>
+      </section>
+
+      <section class="view" id="projectsView">
+        <div class="section-head">
+          <div><p class="eyebrow">ENTREGAS</p><h2>Projetos em andamento</h2></div>
+          <button class="btn primary" id="newProjectBtn">+ Novo projeto</button>
+        </div>
+        <div id="projectsGrid" class="projects-grid"></div>
+      </section>
+
+      <section class="view" id="financeView">
+        <div class="stats-grid finance-stats">
+          <article class="stat-card"><span>Total contratado</span><strong id="financeContracted">R$ 0</strong></article>
+          <article class="stat-card"><span>Total recebido</span><strong id="financeReceived">R$ 0</strong></article>
+          <article class="stat-card"><span>A receber</span><strong id="financePending">R$ 0</strong></article>
+          <article class="stat-card accent"><span>Ticket médio</span><strong id="financeTicket">R$ 0</strong></article>
+        </div>
+        <div class="panel table-panel">
+          <div class="panel-head"><div><span class="panel-kicker">MOVIMENTAÇÕES</span><h2>Controle financeiro</h2></div><button class="btn ghost" id="newTransactionBtn">+ Lançamento</button></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Descrição</th><th>Cliente</th><th>Vencimento</th><th>Status</th><th>Valor</th><th></th></tr></thead><tbody id="financeTableBody"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView">
+        <div class="settings-grid">
+          <article class="panel integration-card">
+            <div class="integration-logo instagram">◎</div>
+            <div class="integration-copy">
+              <span class="badge warning" id="igBadge">Não conectado</span>
+              <h2>Instagram profissional</h2>
+              <p>Conecte o backend oficial da Meta para receber leads do Direct automaticamente. Informe a URL do seu backend e a chave de API (CRM_API_KEY).</p>
+              <div class="field"><label>URL do backend (HTTPS)</label><input id="igBackendUrl" placeholder="https://seu-backend.onrender.com"></div>
+              <div class="field"><label>Chave de API (CRM_API_KEY)</label><input id="igApiKey" type="password" placeholder="sua chave secreta"></div>
+              <div class="integration-actions">
+                <button class="btn ghost" id="igSaveBtn">Salvar</button>
+                <button class="btn primary" id="igConnectBtn">Conectar Instagram</button>
+                <button class="btn primary" id="igSyncBtn">Sincronizar Direct</button>
+              </div>
+              <p class="integration-status" id="igStatus">Preencha a URL e a chave e clique em Salvar.</p>
+              <button class="text-btn" id="instagramGuideBtn">Ver guia de integração</button>
+            </div>
+          </article>
+
+          <article class="panel integration-card">
+            <div class="integration-logo site">↗</div>
+            <div class="integration-copy">
+              <span class="badge success">Pronto para usar</span>
+              <h2>Formulário do site</h2>
+              <p>Use o endpoint demonstrativo ou importe leads por JSON. O exemplo abaixo mostra o formato esperado para integrar o formulário do seu portfólio.</p>
+              <pre><code>{
+  "name": "Nome do cliente",
+  "company": "Empresa",
+  "service": "Criação de site",
+  "source": "Site",
+  "value": 1200
+}</code></pre>
+            </div>
+          </article>
+        </div>
+        <article class="panel danger-zone">
+          <div>
+            <span class="panel-kicker">DADOS LOCAIS</span>
+            <h2>Gerenciar informações</h2>
+            <p>Exporte um backup antes de limpar. Esta ação remove leads, projetos e lançamentos deste navegador.</p>
+          </div>
+          <button class="btn ghost" id="clearDataBtn">Limpar todos os dados</button>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head"><div><p class="eyebrow" id="modalEyebrow">NOVO REGISTRO</p><h2 id="modalTitle">Novo lead</h2></div><button class="icon-btn" id="closeModalBtn">×</button></div>
+      <form id="dynamicForm" class="form-grid"></form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>

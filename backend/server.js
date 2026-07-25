@@ -43,7 +43,8 @@ const {
   WEBHOOK_VERIFY_TOKEN,       // string que você inventa e repete no painel da Meta
   CRM_API_KEY,                // chave que o front-end usa para puxar leads
   GRAPH_VERSION = 'v21.0',
-  SCOPES = 'instagram_basic,instagram_manage_messages,pages_show_list,pages_manage_metadata,business_management',
+  // Permissões do "Instagram API com login do Instagram" (modelo novo da Meta).
+  SCOPES = 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments',
   ALLOWED_ORIGIN = '*',       // domínio do CRM; em produção coloque a URL exata
 } = process.env;
 
@@ -84,65 +85,76 @@ app.get('/api/status', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 1) Início do OAuth — redireciona para o login da Meta
+// 1) Início do OAuth — login do Instagram (Instagram API with Instagram Login)
+// APP_ID/APP_SECRET aqui são o "Instagram app ID" e "Instagram app secret".
 // ---------------------------------------------------------------------------
 app.get('/auth/instagram', (_req, res) => {
   if (missing.length) return res.status(500).send(`Configuração incompleta. Falta definir: ${missing.join(', ')}`);
-  const url = new URL('https://www.facebook.com/' + GRAPH_VERSION + '/dialog/oauth');
+  const url = new URL('https://www.instagram.com/oauth/authorize');
   url.searchParams.set('client_id', APP_ID);
   url.searchParams.set('redirect_uri', REDIRECT_URI);
-  url.searchParams.set('scope', SCOPES);
   url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', SCOPES);
   url.searchParams.set('state', crypto.randomBytes(8).toString('hex'));
   res.redirect(url.toString());
 });
 
 // ---------------------------------------------------------------------------
-// 2) Callback do OAuth — troca "code" por token e guarda
+// 2) Callback do OAuth — troca "code" por token de longa duração e guarda
 // ---------------------------------------------------------------------------
 app.get('/auth/instagram/callback', async (req, res) => {
   const { code, error, error_description: errDesc } = req.query;
-  if (error) return res.status(400).send(`Erro no login da Meta: ${error} — ${errDesc || ''}`);
+  if (error) return res.status(400).send(`Erro no login do Instagram: ${error} — ${errDesc || ''}`);
   if (!code) return res.status(400).send('Faltou o parâmetro "code".');
 
   try {
-    // 2a) code -> token de curta duração
-    const shortUrl = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token`);
-    shortUrl.searchParams.set('client_id', APP_ID);
-    shortUrl.searchParams.set('client_secret', APP_SECRET);
-    shortUrl.searchParams.set('redirect_uri', REDIRECT_URI);
-    shortUrl.searchParams.set('code', code);
-    const shortResp = await fetch(shortUrl).then((r) => r.json());
-    if (shortResp.error) throw new Error(JSON.stringify(shortResp.error));
+    // 2a) code -> token de curta duração (POST form-encoded)
+    const form = new URLSearchParams();
+    form.set('client_id', APP_ID);
+    form.set('client_secret', APP_SECRET);
+    form.set('grant_type', 'authorization_code');
+    form.set('redirect_uri', REDIRECT_URI);
+    form.set('code', String(code));
+    const shortResp = await fetch('https://api.instagram.com/oauth/access_token', {
+      method: 'POST', body: form,
+    }).then((r) => r.json());
+    if (shortResp.error_type || shortResp.error) throw new Error(JSON.stringify(shortResp));
+    // resposta pode vir como objeto único ou dentro de "data"
+    const first = Array.isArray(shortResp.data) ? shortResp.data[0] : shortResp;
+    const shortToken = first.access_token;
+    let igId = first.user_id || null;
 
     // 2b) token curto -> token de longa duração (60 dias)
-    const longUrl = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token`);
-    longUrl.searchParams.set('grant_type', 'fb_exchange_token');
-    longUrl.searchParams.set('client_id', APP_ID);
+    const longUrl = new URL('https://graph.instagram.com/access_token');
+    longUrl.searchParams.set('grant_type', 'ig_exchange_token');
     longUrl.searchParams.set('client_secret', APP_SECRET);
-    longUrl.searchParams.set('fb_exchange_token', shortResp.access_token);
+    longUrl.searchParams.set('access_token', shortToken);
     const longResp = await fetch(longUrl).then((r) => r.json());
-    const accessToken = longResp.access_token || shortResp.access_token;
+    const accessToken = longResp.access_token || shortToken;
 
-    // 2c) descobre a Página e a conta do Instagram vinculada
-    let username = null; let igId = null; let pageId = null;
+    // 2c) descobre o @usuário
+    let username = null;
     try {
-      const pages = await fetch(
-        `https://graph.facebook.com/${GRAPH_VERSION}/me/accounts?fields=name,id,access_token,instagram_business_account{id,username}&access_token=${accessToken}`,
+      const me = await fetch(
+        `https://graph.instagram.com/me?fields=user_id,username&access_token=${accessToken}`,
       ).then((r) => r.json());
-      const page = pages.data?.find((p) => p.instagram_business_account) || pages.data?.[0];
-      if (page) {
-        pageId = page.id;
-        igId = page.instagram_business_account?.id || null;
-        username = page.instagram_business_account?.username || null;
-      }
+      username = me.username || null;
+      igId = me.user_id || igId;
     } catch { /* segue mesmo sem descobrir o username */ }
 
     saveToken({
       access_token: accessToken,
       expires_in: longResp.expires_in || null,
-      username, userId: igId, pageId,
+      username, userId: igId,
     });
+
+    // 2d) inscreve o app para receber webhooks de mensagens desta conta
+    try {
+      await fetch(
+        `https://graph.instagram.com/${GRAPH_VERSION}/me/subscribed_apps?subscribed_fields=messages&access_token=${accessToken}`,
+        { method: 'POST' },
+      );
+    } catch { /* não impede a conexão */ }
 
     res.send(`<html lang="pt-BR"><body style="font-family:system-ui;background:#050505;color:#fff;text-align:center;padding:60px">
       <h1>✅ Instagram conectado</h1>

@@ -68,6 +68,64 @@ const requiredEnv = ['APP_ID', 'APP_SECRET', 'REDIRECT_URI', 'WEBHOOK_VERIFY_TOK
 const missing = requiredEnv.filter((k) => !process.env[k]);
 
 // ---------------------------------------------------------------------------
+// Páginas públicas (exigidas pela Meta para publicar o app)
+// ---------------------------------------------------------------------------
+const pageShell = (title, body) => `<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} — Guatelipe CRM</title>
+<style>body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:760px;margin:0 auto;padding:40px 22px;line-height:1.65;color:#1a1a1a;background:#fff}
+h1{font-size:26px;margin-bottom:4px}h2{font-size:18px;margin-top:28px}small{color:#666}a{color:#2563eb}</style>
+</head><body>${body}</body></html>`;
+
+app.get('/', (_req, res) => res.type('html').send(pageShell('Backend',
+  `<h1>Guatelipe CRM — API</h1>
+   <p>Servidor da integração com o Instagram em funcionamento.</p>
+   <p><small>Este endereço é uma API, não um site. Endpoints públicos:
+   <a href="/health">/health</a> · <a href="/privacy">/privacy</a> ·
+   <a href="/data-deletion">/data-deletion</a></small></p>`)));
+
+app.get('/privacy', (_req, res) => res.type('html').send(pageShell('Política de Privacidade',
+  `<h1>Política de Privacidade</h1>
+   <small>Guatelipe Web Development · Atualizado em 25 de julho de 2026</small>
+
+   <h2>1. Quem somos</h2>
+   <p>O Guatelipe CRM é uma ferramenta usada pela Guatelipe Web Development para
+   gerenciar contatos comerciais (leads). Contato:
+   <a href="mailto:guatelipedev@gmail.com">guatelipedev@gmail.com</a>.</p>
+
+   <h2>2. Dados que coletamos</h2>
+   <p>Quando você nos envia uma mensagem pelo Instagram Direct, coletamos, por meio
+   da API oficial da Meta, o seguinte: identificador da sua conta do Instagram,
+   nome de usuário (@) e o conteúdo da mensagem enviada. Não coletamos senhas nem
+   dados de pagamento.</p>
+
+   <h2>3. Para que usamos</h2>
+   <p>Usamos esses dados exclusivamente para registrar e responder ao seu contato
+   comercial dentro do nosso CRM (atendimento e propostas). Não vendemos nem
+   compartilhamos seus dados com terceiros para fins de marketing.</p>
+
+   <h2>4. Armazenamento e segurança</h2>
+   <p>Os dados ficam armazenados em servidor próprio com acesso restrito por chave
+   e conexão segura (HTTPS). Mantemos apenas o necessário para o atendimento.</p>
+
+   <h2>5. Seus direitos e exclusão de dados</h2>
+   <p>Você pode solicitar acesso, correção ou exclusão dos seus dados a qualquer
+   momento pelo e-mail acima. Veja também as instruções em
+   <a href="/data-deletion">/data-deletion</a>.</p>
+
+   <h2>6. Alterações</h2>
+   <p>Esta política pode ser atualizada. A data no topo indica a última revisão.</p>`)));
+
+app.get('/data-deletion', (_req, res) => res.type('html').send(pageShell('Exclusão de dados',
+  `<h1>Instruções de exclusão de dados</h1>
+   <small>Guatelipe Web Development</small>
+   <p>Para solicitar a exclusão dos seus dados coletados pelo Guatelipe CRM
+   (mensagens e informações de contato do Instagram), envie um e-mail para
+   <a href="mailto:guatelipedev@gmail.com">guatelipedev@gmail.com</a> com o assunto
+   <strong>"Exclusão de dados"</strong> e o seu @ do Instagram.</p>
+   <p>Processaremos a exclusão em até 30 dias e confirmaremos por e-mail.</p>`)));
+
+// ---------------------------------------------------------------------------
 // Saúde / status
 // ---------------------------------------------------------------------------
 app.get('/health', (_req, res) => res.json({ ok: true, missingEnv: missing }));
